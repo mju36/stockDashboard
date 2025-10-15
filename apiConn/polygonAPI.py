@@ -1,8 +1,8 @@
 import requests
 import json
-import Ticker as ticker
-import Option as option
-import OptionChain as optionchain
+import dataClasses.Ticker as Ticker
+import dataClasses.Option as Option
+import dataClasses.OptionChain as OptionChain
 
 def is_valid_request(url):
         try:
@@ -29,7 +29,7 @@ class apiConn:
     def __init__(self, base_url):
         self.base_url = base_url
             
-    def get_optionchain_data(self, Ticker: ticker, expiration, limit) -> optionchain:
+    def get_optionchain_data(self, Ticker: Ticker, expiration, limit) -> OptionChain:
         calls_endpoint = f"{self.base_url}/snapshot/options/{ticker.symbol}?expiration_date={expiration}&contract_type=call&order=asc&limit={limit}&sort=strike_price&apiKey={apiKey}"
         puts_endpoint = f"{self.base_url}/snapshot/options/{ticker.symbol}?expiration_date={expiration}&contract_type=put&order=asc&limit={limit}&sort=strike_price&apiKey={apiKey}"
         print(f"Making a request for {ticker.symbol} with expirary {expiration}")
@@ -49,8 +49,8 @@ class apiConn:
         
         return self.input_fetched_option_data(put_options, call_options)
         
-    def input_fetched_option_data(self, put_options: list, call_options: list) -> optionchain:
-        chain = optionchain.OptionChain()
+    def input_fetched_option_data(self, put_options: list, call_options: list) -> OptionChain:
+        chain = OptionChain.OptionChain()
         
         total_contracts = put_options + call_options
         for contract in total_contracts:

@@ -1,9 +1,8 @@
-import Ticker as ticker
-import Option as option
+import Ticker as Ticker
+import Option as Option
 class OptionChain:
-    def __init__(self, ticker, date):
+    def __init__(self, ticker: Ticker, date):
         self._ticker = ticker
-        self._option = option
         self._date = date
         self._call_chain = {}
         self._put_chain = {}
@@ -11,9 +10,17 @@ class OptionChain:
     ###get optionChain for each putChain/callChain
     
         
-    def add_option(self, option: "Option"):
+    def add_option(self, option: Option):
         if option.get_option_type() == "call":
             self._call_chain[option.get_strike()] = option
         else:
-            self._put_chain[option.get_strik()] = option
+            self._put_chain[option.get_strike()] = option
+    
+    def get_call_chain(self):
+        return self._call_chain
+    
+    def get_put_chain(self):
+        return self._call_chain
+    
+    
     
