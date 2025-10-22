@@ -23,52 +23,77 @@ def is_valid_request(url):
         # 5. Catch any other unexpected error
             print(f"AN UNEXPECTED ERROR OCCURRED: {e}")
             return None 
-class apiConn:
+class polygonAPI:
 #example endpoint
-    apiKey = ""
-    def __init__(self, base_url):
-        self.base_url = base_url
+    def __init__(self, apiKey):
+        self.base_url = 'https://api.polygon.io/v3'
+        self.apiKey = apiKey
             
     def get_optionchain_data(self, Ticker: Ticker, expiration, limit) -> OptionChain:
-        calls_endpoint = f"{self.base_url}/snapshot/options/{ticker.symbol}?expiration_date={expiration}&contract_type=call&order=asc&limit={limit}&sort=strike_price&apiKey={apiKey}"
-        puts_endpoint = f"{self.base_url}/snapshot/options/{ticker.symbol}?expiration_date={expiration}&contract_type=put&order=asc&limit={limit}&sort=strike_price&apiKey={apiKey}"
-        print(f"Making a request for {ticker.symbol} with expirary {expiration}")
-        call_data = is_valid_request(calls_endpoint)
-        put_data = is_valid_request(puts_endpoint)
+            calls_endpoint = f"{self.base_url}/snapshot/options/{Ticker.symbol}?expiration_date={expiration}&contract_type=call&order=asc&limit=50&sort=strike_price&apiKey={self.apiKey}"
+            puts_endpoint = f"{self.base_url}/snapshot/options/{Ticker.symbol}?expiration_date={expiration}&contract_type=put&order=asc&limit=50&sort=strike_price&apiKey={self.apiKey}"
+            print(f"Making a request for {Ticker.symbol} with expirary {expiration}")
+            call_data = is_valid_request(calls_endpoint)
+            put_data = is_valid_request(puts_endpoint)
         
-        if call_data is None or put_data is None:
-            print(f"Error occured when trying to get option chain data")
-            return None
+            if call_data is None or put_data is None:
+                print(f"Error occured when trying to get option chain data")
+                return None
         
-        try:
-            call_options = call_data['results']
-            put_options = put_data['results']
-        except KeyError:
-            print("Missing results array containing array of options")
-            return None
+            try:
+                call_options = call_data['results']
+                put_options = put_data['results']
+            
+            except KeyError:
+                print("Missing results array containing array of options")
+                return None
         
-        return self.input_fetched_option_data(put_options, call_options)
+            return self.input_fetched_option_data(put_options, call_options, Ticker, expiration)
         
-    def input_fetched_option_data(self, put_options: list, call_options: list) -> OptionChain:
-        chain = OptionChain.OptionChain()
-        
+    def input_fetched_option_data(self, put_options: list, call_options: list, ticker: Ticker, expiration: str) -> OptionChain:
+        chain = OptionChain.OptionChain(ticker, expiration)
+    
         total_contracts = put_options + call_options
-        for contract in total_contracts:
-            details = contract.get('details',{})
-            day_data = contract.get('day',{})
-            greeks = contract.get('greeks',{})
-            #will add more params later on, first have to test this 
-            new_option = option.Option(
-                strike_price = details.get('strike_price'),
-                option_type = details.get('contract_type'),
-                open_interest = contract.get('open_interest'),
-                volume = day_data.get('volume'),
-                delta = greeks.get('delta'),
-                gamma = greeks.get('gamma'),
-                theta = greeks.get('theta')
+    
+    # Extract all strike prices
+        strikes = [contract.get('details', {}).get('strike_price') 
+               for contract in total_contracts 
+               if contract.get('details', {}).get('strike_price') is not None]
+    
+    # Get unique strikes
+        unique_strikes = list(set(strikes))
+    
+    # Sort by distance from current ticker price
+        unique_strikes.sort(key=lambda strike: abs(strike - ticker.price))
+    
+    # Take closest 10 strikes
+        closest_10_strikes = unique_strikes[:10]
+    
+    # Convert to set for fast lookup
+        selected_strikes = set(closest_10_strikes)
+    
+    # Filter contracts to only include those with selected strikes
+        filtered_contracts = [contract for contract in total_contracts 
+                         if contract.get('details', {}).get('strike_price') in selected_strikes]
+    
+    # Create Option objects for filtered contracts
+        for contract in filtered_contracts:
+            details = contract.get('details', {})
+            day_data = contract.get('day', {})
+            greeks = contract.get('greeks', {})
+        
+        # Will add more params later on, first have to test this 
+            new_option = Option.Option(
+                strike=details.get('strike_price'),
+                option_type=details.get('contract_type'),
+                open_interest=contract.get('open_interest'),
+                volume=day_data.get('volume'),
+                delta=greeks.get('delta'),
+                gamma=greeks.get('gamma'),
+                theta=greeks.get('theta')
             )
             chain.add_option(new_option)
-            
+    
         return chain
             
             

@@ -1,24 +1,24 @@
 class Ticker:
     def __init__(self, symbol, price, volume):
-        self.__symbol = symbol.upper()
-        self._price = price
-        self.__volume = volume 
-        
-        def get_symbol(self):
-            return self.__symbol
-        
-        def set_symbol(self, symbol):
-            self.__symbol = symbol
-            
-        def get_price(self):
-            return self.__price
-        
-        def set_price(self, price):
-            self.__price = price
-            
-        def get_volume(self):
-            return self._volume
-        
-        def set_volume(self, volume):
-            self._volume = volume
+        self.symbol = symbol.upper()
+        self.price = float(price)
+        self.volume = int(volume)
+
+    def get_symbol(self):
+        return self.symbol
+
+    def set_symbol(self, symbol):
+        self.symbol = symbol
+
+    def get_price(self):
+        return self.price
+
+    def set_price(self, price):
+        self.price = float(price)
+
+    def get_volume(self):
+        return self.volume
+
+    def set_volume(self, volume):
+        self.volume = int(volume)
             
