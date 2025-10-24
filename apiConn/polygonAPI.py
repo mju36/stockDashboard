@@ -29,9 +29,9 @@ class polygonAPI:
         self.base_url = 'https://api.polygon.io/v3'
         self.apiKey = apiKey
             
-    def get_optionchain_data(self, Ticker: Ticker, expiration, limit) -> OptionChain:
-            calls_endpoint = f"{self.base_url}/snapshot/options/{Ticker.symbol}?expiration_date={expiration}&contract_type=call&order=asc&limit=50&sort=strike_price&apiKey={self.apiKey}"
-            puts_endpoint = f"{self.base_url}/snapshot/options/{Ticker.symbol}?expiration_date={expiration}&contract_type=put&order=asc&limit=50&sort=strike_price&apiKey={self.apiKey}"
+    def get_optionchain_data(self, Ticker: Ticker, expiration, limit=250, num_strikes=10) -> OptionChain:
+            calls_endpoint = f"{self.base_url}/snapshot/options/{Ticker.symbol}?expiration_date={expiration}&contract_type=call&limit={limit}&sort=strike_price&apiKey={self.apiKey}"
+            puts_endpoint = f"{self.base_url}/snapshot/options/{Ticker.symbol}?expiration_date={expiration}&contract_type=put&limit={limit}&sort=strike_price&apiKey={self.apiKey}"
             print(f"Making a request for {Ticker.symbol} with expirary {expiration}")
             call_data = is_valid_request(calls_endpoint)
             put_data = is_valid_request(puts_endpoint)
@@ -48,9 +48,9 @@ class polygonAPI:
                 print("Missing results array containing array of options")
                 return None
         
-            return self.input_fetched_option_data(put_options, call_options, Ticker, expiration)
-        
-    def input_fetched_option_data(self, put_options: list, call_options: list, ticker: Ticker, expiration: str) -> OptionChain:
+            return self.input_fetched_option_data(put_options, call_options, Ticker, expiration, num_strikes=num_strikes)
+
+    def input_fetched_option_data(self, put_options: list, call_options: list, ticker: Ticker, expiration: str, num_strikes=10) -> OptionChain:
         chain = OptionChain.OptionChain(ticker, expiration)
     
         total_contracts = put_options + call_options
@@ -62,15 +62,37 @@ class polygonAPI:
     
     # Get unique strikes
         unique_strikes = list(set(strikes))
-    
-    # Sort by distance from current ticker price
-        unique_strikes.sort(key=lambda strike: abs(strike - ticker.price))
-    
-    # Take closest 10 strikes
-        closest_10_strikes = unique_strikes[:10]
-    
+
+    # Separate strikes above and below current price
+        strikes_below = sorted([s for s in unique_strikes if s <= ticker.price], reverse=True)
+        strikes_above = sorted([s for s in unique_strikes if s > ticker.price])
+
+    # Calculate how many strikes to take from each side
+        half_strikes = num_strikes // 2
+
+    # Take closest strikes from each side
+        selected_below = strikes_below[:half_strikes]
+        selected_above = strikes_above[:half_strikes]
+
+    # If num_strikes is odd, add one more from whichever side is closer
+        if num_strikes % 2 == 1:
+            if selected_below and selected_above:
+                # Compare which is closer to current price
+                closest_below_dist = abs(ticker.price - selected_below[0])
+                closest_above_dist = abs(selected_above[0] - ticker.price)
+                if closest_below_dist <= closest_above_dist and len(strikes_below) > half_strikes:
+                    selected_below.append(strikes_below[half_strikes])
+                elif len(strikes_above) > half_strikes:
+                    selected_above.append(strikes_above[half_strikes])
+            elif len(strikes_below) > half_strikes:
+                selected_below.append(strikes_below[half_strikes])
+            elif len(strikes_above) > half_strikes:
+                selected_above.append(strikes_above[half_strikes])
+
+        closest_strikes = selected_below + selected_above
+
     # Convert to set for fast lookup
-        selected_strikes = set(closest_10_strikes)
+        selected_strikes = set(closest_strikes)
     
     # Filter contracts to only include those with selected strikes
         filtered_contracts = [contract for contract in total_contracts 

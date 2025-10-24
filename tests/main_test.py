@@ -1,5 +1,10 @@
 import sys
 import os
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
+
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from dataClasses.Ticker import Ticker
 from dataClasses import Option
@@ -8,9 +13,7 @@ from apiConn import polygonAPI
 from apiConn.alphaVantage import alphaVantage
 from analysis.analytics import analytics
 
-# Get API keys from environment variables
-# Create a .env file based on .env.example and set your API keys there
-# Or set them with: export POLYGON_API_KEY="your_key_here"
+
 api_key = os.environ.get('POLYGON_API_KEY')
 alpha_vantage_key = os.environ.get('ALPHA_VANTAGE_API_KEY')
 
@@ -26,7 +29,7 @@ if not alpha_vantage_key:
 
 ticker_symbol = input("What ticker to look at: ")
 expiration = input("What expiration for the option chain in format (YYYY-MM-DD): ")
-limit = input("How many strikes to be shown: ")
+num_strikes = int(input("How many strikes to be shown: "))
 
 # First, get the stock data to create a Ticker object
 print(f"\n{'='*60}")
@@ -48,7 +51,7 @@ print(f"{'='*60}")
 obj = polygonAPI.polygonAPI(api_key)
 
 try:
-    option_chain_data = obj.get_optionchain_data(stock, expiration, limit)
+    option_chain_data = obj.get_optionchain_data(stock, expiration, num_strikes=num_strikes)
 
     if option_chain_data:
         print(f"\nSuccessfully got option chain of ticker {stock.get_symbol()}")
