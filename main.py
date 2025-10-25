@@ -52,6 +52,20 @@ def set_cached_option_chain(symbol: str, expiration: str, option_chain: OptionCh
         "timestamp": datetime.now()
     }
 
+class GexPerStrike(BaseModel):
+    strike: float
+    call_gex: int
+    put_gex: int
+    direction_gex: int
+    abs_gex: int
+
+class StrikeVolumeRatio(BaseModel):
+    strike: float
+    call_vol: int
+    put_vol: int
+    total_vol: int
+    ratio: Optional[float]
+
 class OptionData(BaseModel):
     strike: float
     option_type: str
@@ -69,6 +83,8 @@ class MarketDataResponse(BaseModel):
     calls: List[OptionData]
     puts: List[OptionData]
     put_call_volume_ratio: Optional[float]
+    strikes_volume_ratio: List[StrikeVolumeRatio]
+
     cached: bool
     timestamp: str
 
@@ -161,9 +177,32 @@ async def get_market_data(
             gamma=option.gamma,
             theta=option.theta
         ))
-
+    ###analytics work
     analytics_obj = analytics(option_chain)
     pc_ratio = analytics_obj.put_call_volume_ratio(option_chain)
+    strikes_ratio_dict = analytics_obj.strikes_volume_ratio(option_chain)
+    strikes_volume_dict = [
+        StrikeVolumeRatio(
+            strike=strike,
+            call_vol = data["call_vol"],
+            put_vol = data["put_vol"],
+            total_vol = data["total_vol"],
+            ratio = data["ratio"]
+        )
+        for strike, data in sorted(strikes_ratio_dict.items())
+    ]
+    gex_per_strike= analytics_obj.gex_per_strike(option_chain)
+    gex_strikes_dict = [
+        GexPerStrike(
+            strike=strike,
+            call_gex = data["call_gex"],
+            put_gex = data["put_gex"],
+            direction_gex = data["direction_gex"],
+            abs_gex = data["abs_gex"]
+        )
+        for strike, data in sorted(gex_per_strike)
+    ]
+
     ###need all analysis fetched here then inputted into MarketDataResponse for ease of access
     return MarketDataResponse(
         symbol=option_chain.ticker.symbol,
@@ -173,6 +212,8 @@ async def get_market_data(
         calls=sorted(calls, key=lambda x: x.strike),
         puts=sorted(puts, key=lambda x: x.strike),
         put_call_volume_ratio=pc_ratio,
+        strikes_volume_ratio = strikes_volume_dict,
+        gex_per_strike = gex_strikes_dict,
         cached=was_cached,
         timestamp=datetime.now().isoformat()
     )
